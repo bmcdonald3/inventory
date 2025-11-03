@@ -19,15 +19,19 @@ The server supports configuration via:
 
 - 💾 File-based storage
 
-## Development
+## Testing
 
+### Launch the server
 ```bash
 # Install dependencies
 go mod tidy
 
 # Run the server
-go run cmd/server/main.go serve
+go run ./cmd/server/
+```
 
-# Run with custom config
-go run cmd/server/main.go serve --config config.yaml
+### Populate with test data
+```bash
+# Run script with sample data to populate DB
+./test-data/populate_node.sh
 ```
