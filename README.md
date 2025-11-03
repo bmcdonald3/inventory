@@ -87,4 +87,7 @@ go run ./cmd/server/
 ```bash
 # Run script with sample data to populate DB
 ./test-data/populate_node.sh
+
+# Script will tell you what to run next...
+# Explore the generated data by querying devices!
 ```
