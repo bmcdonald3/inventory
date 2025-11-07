@@ -24,20 +24,23 @@ import (
 	// Import the GENERATED storage implementation
 	internal_storage "github.com/user/inventory-api/internal/storage"
 
-	// Import the GENERATED events package
+	// Import the 'internal/middleware' package for events
 	internal_events "github.com/user/inventory-api/internal/middleware"
+
+	// --- DEBUGGING IMPORTS ---
+	"github.com/openchami/fabrica/pkg/resource"
+	"github.com/user/inventory-api/pkg/resources/discoverysnapshot"
+	// --- END DEBUGGING IMPORTS ---
 )
 
 // --- Global variables for handlers ---
 var (
 	// Use the aliased interface type
-	// <<< FIX: The interface is named StorageBackend
 	globalStorage fabrica_storage.StorageBackend
 	globalEventBus events.EventBus
 )
 
 // SetStorageBackend sets the global storage backend
-// <<< FIX: The interface is named StorageBackend
 func SetStorageBackend(s fabrica_storage.StorageBackend) {
 	globalStorage = s
 }
@@ -68,7 +71,7 @@ type Config struct {
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
 	return &Config{
-		Port:         8081,
+		Port:         8080,
 		Host:         "0.0.0.0",
 		ReadTimeout:  15,
 		WriteTimeout: 15,
@@ -111,7 +114,7 @@ func init() {
 	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug logging")
 
 	// Server flags
-	serveCmd.Flags().IntP("port", "p", 8081, "Port to listen on")
+	serveCmd.Flags().IntP("port", "p", 8080, "Port to listen on")
 	serveCmd.Flags().String("host", "0.0.0.0", "Host to bind to")
 	serveCmd.Flags().Int("read-timeout", 15, "Read timeout in seconds")
 	serveCmd.Flags().Int("write-timeout", 15, "Write timeout in seconds")
@@ -169,23 +172,18 @@ func runServer(cmd *cobra.Command, args []string) error {
 	log.Printf("Starting inventory-api server...")
 
 	// --- 1. Initialize Storage Backend ---
-	// <<< FIX: Use the GENERATED InitFileBackend function
 	if err := internal_storage.InitFileBackend(config.DataDir); err != nil {
 		return fmt.Errorf("failed to initialize file storage: %w", err)
 	}
-	
-	// <<< FIX: Access the public 'Backend' variable
 	storageBackend := internal_storage.Backend 
 	if storageBackend == nil {
 		 return fmt.Errorf("storage backend is nil after initialization")
 	}
-
-	SetStorageBackend(storageBackend) // Set for global access
+	SetStorageBackend(storageBackend)
 	log.Printf("File storage initialized in %s", config.DataDir)
 
 
 	// --- 2. Initialize Event Bus ---
-	// <<< FIX: Use the GENERATED event bus initializer and instance
 	log.Println("Initializing generated in-memory event bus...")
 	if err := internal_events.InitializeEventBus(); err != nil {
 		return fmt.Errorf("failed to initialize event bus: %w", err)
@@ -194,15 +192,12 @@ func runServer(cmd *cobra.Command, args []string) error {
 	if eventBus == nil {
 		return fmt.Errorf("event bus is nil after initialization")
 	}
-	// The generated bus is started by its initializer
-	defer internal_events.CloseEventBus() // Use the generated closer
+	defer internal_events.CloseEventBus() 
 	SetEventBus(eventBus)
-	// <<< END FIX
 
 
 	// --- 3. Initialize Reconciliation Controller ---
 	log.Println("Initializing reconciliation controller...")
-	// Pass the *same* storageBackend and eventBus to the controller
 	controller := reconcile.NewController(eventBus, storageBackend)
 
 	
@@ -213,7 +208,7 @@ func runServer(cmd *cobra.Command, args []string) error {
 			EventBus: eventBus,
 			Logger:   reconcile.NewDefaultLogger(), // Simple logger
 		},
-		Storage: storageBackend, // Give it access to the *same* storage
+		Storage: storageBackend,
 	}
 	controller.RegisterReconciler(snapshotReconciler)
 	log.Printf("Registered reconciler for %s", snapshotReconciler.GetResourceKind())
@@ -240,13 +235,8 @@ func runServer(cmd *cobra.Command, args []string) error {
 		r.Mount("/debug", middleware.Profiler())
 	}
 
-	// <<< FIX: Add the generated event middleware
-	//if internal_events.EventsEnabled {
-	//	r.Use(internal_events.EventMiddleware)
-	//}
-	// <<< END FIX
-
-	// This function registers the handlers that use the generated storage
+	// We removed the empty event middleware
+	
 	RegisterGeneratedRoutes(r) 
 	r.Get("/health", healthHandler)
 
@@ -270,6 +260,42 @@ func runServer(cmd *cobra.Command, args []string) error {
 	}()
 
 	
+	// --- DEBUGGING: MANUALLY PUBLISH A DUMMY EVENT ---
+	go func() {
+		log.Println("[DEBUG] --- Waiting 5 seconds before publishing dummy event ---")
+		time.Sleep(5 * time.Second)
+		log.Println("[DEBUG] --- Publishing dummy DiscoverySnapshot event ---")
+		
+		// 1. Create a dummy snapshot
+		uid, _ := resource.GenerateUIDForResource("DiscoverySnapshot")
+		dummySnapshot := &discoverysnapshot.DiscoverySnapshot{
+			Resource: resource.Resource{
+				APIVersion: "v1",
+				Kind:       "DiscoverySnapshot",
+			},
+			Spec: discoverysnapshot.DiscoverySnapshotSpec{
+				RawData: []byte(`{"test": "true"}`),
+			},
+		}
+		dummySnapshot.Metadata.Initialize("dummy-snapshot", uid)
+
+		// 2. Save it to storage (so the reconciler can find it)
+		if err := internal_storage.SaveDiscoverySnapshot(context.Background(), dummySnapshot); err != nil {
+			log.Printf("[DEBUG] FAILED to save dummy snapshot: %v", err)
+			return
+		}
+		log.Printf("[DEBUG] Dummy snapshot %s saved to storage.", uid)
+
+		// 3. Publish the event using the *exact* function the handler *should* be calling
+		if err := internal_events.PublishResourceEvent(context.Background(), "created", "DiscoverySnapshot", uid, dummySnapshot); err != nil {
+			log.Printf("[DEBUG] FAILED to publish dummy event: %v", err)
+			return
+		}
+		log.Println("[DEBUG] --- Dummy event published successfully ---")
+	}()
+	// --- END DEBUGGING ---
+
+
 	// --- 8. Wait for Interrupt (Graceful Shutdown) ---
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -278,8 +304,8 @@ func runServer(cmd *cobra.Command, args []string) error {
 
 	// --- 9. Shut Down Controller ---
 	log.Println("Signaling reconciliation controller to stop...")
-	controllerCancel() // Signal context to be done
-	controller.Stop()    // Wait for work queue to empty
+	controllerCancel()
+	controller.Stop()
 	log.Println("Reconciliation controller stopped.")
 
 
@@ -296,7 +322,6 @@ func runServer(cmd *cobra.Command, args []string) error {
 }
 
 // Health check handler
-// <<< FIX: Corrected typo http.Writerr to http.ResponseWriter
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
