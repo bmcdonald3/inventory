@@ -5,11 +5,12 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/bmcdonald3/inventory/pkg/collector/" 
+
+	"github.com/bmcdonald3/inventory/pkg/collector"
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "redfish-inventory-collector",
+	Use:   "collector",
 	Short: "Gathers hardware inventory via Redfish and posts it to the OpenCHAMI API.",
 	Run:   executeGatherAndPost,
 }
@@ -24,7 +25,6 @@ func init() {
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		// This will catch execution errors and print them clearly
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -33,14 +33,13 @@ func main() {
 // executeGatherAndPost is the main function logic triggered by cobra.
 func executeGatherAndPost(cmd *cobra.Command, args []string) {
 	fmt.Printf("Starting inventory collection for BMC IP: %s\n", bmcIP)
-	
-	// Pass the IP captured by cobra to the core logic
-	err := inventory.CollectAndPost(bmcIP) 
+
+	// Pass the IP captured by cobra to the new collector package
+	err := collector.CollectAndPost(bmcIP)
 	if err != nil {
-		// Log the error using cobra's framework
 		fmt.Fprintf(os.Stderr, "Collection Failed: %v\n", err)
 		os.Exit(1)
 	}
-	
+
 	fmt.Println("Inventory collection and posting completed successfully.")
 }
