@@ -1,15 +1,5 @@
 package inventory
 
-// DiscoveredDevice is the internal representation of a device before posting to the API.
-type DiscoveredDevice struct {
-	DeviceType   string
-	Manufacturer string
-	PartNumber   string
-	SerialNumber string
-	ParentID     string // Redfish URI placeholder for the parent
-	RedfishURI   string // Source URI
-}
-
 // SystemInventory holds the discovered devices related to one System/Node.
 type SystemInventory struct {
 	Node  DiscoveredDevice
