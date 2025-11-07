@@ -341,7 +341,7 @@ func mapCommonProperties(rfProps CommonRedfishProperties, deviceType, redfishURI
 		DeviceType:   deviceType,
 		Manufacturer: rfProps.Manufacturer,
 		PartNumber:   partNum,
-		SerialNumber: rfFalses.SerialNumber,
+		SerialNumber: rfProps.SerialNumber,
 		Properties:   props, // Assign the correct map type
 	}
 }
