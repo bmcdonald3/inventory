@@ -27,7 +27,7 @@ import (
 // --- Configuration ---
 
 // InventoryAPIHost is the address of the Fabrica API server.
-const InventoryAPIHost = "http://localhost:8081"
+const InventoryAPIHost = "http://localhost:8080" // NOTE: Your server is on 8080
 
 // DefaultUsername and DefaultPassword are hardcoded for Redfish basic auth.
 const DefaultUsername = "root"
@@ -81,9 +81,10 @@ func CollectAndPost(bmcIP string) error {
 
 	// The generated CreateDiscoverySnapshotRequest struct will require the 'Name'
 	// and the 'Spec' fields.
+	// <<< FIX: The Create*Request struct embeds the Spec struct directly.
 	createReq := fabricaclient.CreateDiscoverySnapshotRequest{
-		Name: fmt.Sprintf("snapshot-%s-%d", bmcIP, time.Now().Unix()),
-		Spec: snapshotSpec,
+		Name:                  fmt.Sprintf("snapshot-%s-%d", bmcIP, time.Now().Unix()),
+		DiscoverySnapshotSpec: snapshotSpec, // <<< FIX: Use the embedded struct type name
 	}
 
 	// Use the SDK to create the snapshot resource
@@ -267,7 +268,7 @@ func mapCommonProperties(rfProps CommonRedfishProperties, deviceType, redfishURI
 		DeviceType:   deviceType,
 		Manufacturer: rfProps.Manufacturer,
 		PartNumber:   partNum,
-		SerialNumber: rfSProps.SerialNumber,
+		SerialNumber: rfProps.SerialNumber, // <<< FIX: Corrected typo rfSProps -> rfProps
 		Properties:   props,
 		// Note: We do NOT set ParentID here. The reconciler will do that.
 	}
