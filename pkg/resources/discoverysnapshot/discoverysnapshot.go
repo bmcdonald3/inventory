@@ -6,74 +6,39 @@ package discoverysnapshot
 
 import (
 	"context"
-	"encoding/json" // Make sure this import is here
+	"encoding/json"
+
 	"github.com/openchami/fabrica/pkg/resource"
 )
 
-// DiscoverySnapshot represents a DiscoverySnapshot resource
+// DiscoverySnapshot is the resource that holds a raw hardware snapshot.
 type DiscoverySnapshot struct {
-	resource.Resource
-	Spec   DiscoverySnapshotSpec   `json:"spec" validate:"required"`
-	Status DiscoverySnapshotStatus `json:"status,omitempty"`
+	resource.Resource `json:",inline"`
+	Spec              DiscoverySnapshotSpec   `json:"spec" validate:"required"`
+	Status            DiscoverySnapshotStatus `json:"status,omitempty"`
 }
 
 // DiscoverySnapshotSpec defines the desired state of DiscoverySnapshot
 type DiscoverySnapshotSpec struct {
-	// Example: "redfish-collector"
-	Source string `json:"source,omitempty"`
-
-	// Target is the identifier for the collection target.
-	// Example: "172.24.0.2"
-	Target string `json:"target,omitempty"`
-
-	// RawData holds the complete, raw JSON/YAML payload from the collector.
-	RawData json.RawMessage `json:"rawData,omitempty"`
+	// RawData holds the complete, raw JSON payload from a discovery tool (e.g., the collector).
+	// The reconciler will parse this.
+	RawData json.RawMessage `json:"rawData" validate:"required"`
 }
 
 // DiscoverySnapshotStatus defines the observed state of DiscoverySnapshot
 type DiscoverySnapshotStatus struct {
-	// Phase indicates the current state of reconciliation.
-	// Examples: "Pending", "Processing", "Complete", "Error"
-	Phase string `json:"phase,omitempty"`
-
-	// Message provides a human-readable summary of the snapshot's status.
-	Message string `json:"message,omitempty"`
-
-	// Logs stores a list of log entries or errors generated during processing.
-	Logs []string `json:"logs,omitempty"`
-
-	// DevicesCreated holds the UIDs of all Device resources created by this snapshot.
-	DevicesCreated []string `json:"devicesCreated,omitempty"`
-
-	// DevicesUpdated holds the UIDs of all Device resources updated by this snapshot.
-	DevicesUpdated []string `json:"devicesUpdated,omitempty"`
-
-	// Conditions store the history of transient conditions across phases
-	Conditions []resource.Condition `json:"conditions,omitempty"`
+	Phase   string   `json:"phase,omitempty"`   // e.g., Pending, Processing, Complete, Error
+	Message string   `json:"message,omitempty"` // A human-readable message
+	Logs    []string `json:"logs,omitempty"`    // Logs generated during reconciliation
 }
 
-// Validate implements custom validation logic for DiscoverySnapshot
+// Validate is a hook for custom validation logic
 func (r *DiscoverySnapshot) Validate(ctx context.Context) error {
-	// Add custom validation logic here
+	// You can add logic here to ensure RawData is valid JSON, etc.
 	return nil
 }
 
-// GetKind returns the kind of the resource
-func (r *DiscoverySnapshot) GetKind() string {
-	return "DiscoverySnapshot"
-}
-
-// GetName returns the name of the resource
-func (r *DiscoverySnapshot) GetName() string {
-	return r.Metadata.Name
-}
-
-// GetUID returns the UID of the resource
-func (r *DiscoverySnapshot) GetUID() string {
-	return r.Metadata.UID
-}
-
 func init() {
-	// Register resource type prefix for storage
-	resource.RegisterResourcePrefix("DiscoverySnapshot", "dis")
+	// Register the resource with Fabrica
+	resource.RegisterResourcePrefix("DiscoverySnapshot", "ds")
 }

@@ -52,7 +52,8 @@ func (r *DiscoverySnapshotReconciler) Reconcile(ctx context.Context, resource in
 		r.Logger.Errorf("Failed to marshal snapshot %s for saving: %v", snapshot.GetUID(), err)
 		return reconcile.Result{}, err // Return error, will retry
 	}
-	if err := r.Storage.Save(ctx, snapshot.GetKind(), snapshot.GetUID(), snapshotData); err != nil {
+	// <<< FIX: Call r.GetResourceKind() not snapshot.GetKind()
+	if err := r.Storage.Save(ctx, r.GetResourceKind(), snapshot.GetUID(), snapshotData); err != nil {
 		r.Logger.Errorf("Failed to update status to Processing for %s: %v", snapshot.GetUID(), err)
 		return reconcile.Result{}, err // Return error for retry
 	}
@@ -82,7 +83,8 @@ func (r *DiscoverySnapshotReconciler) Reconcile(ctx context.Context, resource in
 		r.Logger.Errorf("Failed to marshal final snapshot %s for saving: %v", snapshot.GetUID(), err)
 		return reconcile.Result{}, err
 	}
-	if err := r.Storage.Save(ctx, snapshot.GetKind(), snapshot.GetUID(), finalSnapshotData); err != nil {
+	// <<< FIX: Call r.GetResourceKind() not snapshot.GetKind()
+	if err := r.Storage.Save(ctx, r.GetResourceKind(), snapshot.GetUID(), finalSnapshotData); err != nil {
 		r.Logger.Errorf("Failed to update status to Complete for %s: %v", snapshot.GetUID(), err)
 		return reconcile.Result{}, err
 	}
