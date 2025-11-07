@@ -24,18 +24,20 @@ import (
 	// Import the GENERATED storage implementation
 	internal_storage "github.com/user/inventory-api/internal/storage"
 
-	// <<< FIX: Import the GENERATED events package
+	// Import the GENERATED events package
 	internal_events "github.com/user/inventory-api/internal/middleware"
 )
 
 // --- Global variables for handlers ---
 var (
 	// Use the aliased interface type
+	// <<< FIX: The interface is named StorageBackend
 	globalStorage fabrica_storage.StorageBackend
 	globalEventBus events.EventBus
 )
 
 // SetStorageBackend sets the global storage backend
+// <<< FIX: The interface is named StorageBackend
 func SetStorageBackend(s fabrica_storage.StorageBackend) {
 	globalStorage = s
 }
@@ -167,10 +169,12 @@ func runServer(cmd *cobra.Command, args []string) error {
 	log.Printf("Starting inventory-api server...")
 
 	// --- 1. Initialize Storage Backend ---
+	// <<< FIX: Use the GENERATED InitFileBackend function
 	if err := internal_storage.InitFileBackend(config.DataDir); err != nil {
 		return fmt.Errorf("failed to initialize file storage: %w", err)
 	}
 	
+	// <<< FIX: Access the public 'Backend' variable
 	storageBackend := internal_storage.Backend 
 	if storageBackend == nil {
 		 return fmt.Errorf("storage backend is nil after initialization")
@@ -192,13 +196,13 @@ func runServer(cmd *cobra.Command, args []string) error {
 	}
 	// The generated bus is started by its initializer
 	defer internal_events.CloseEventBus() // Use the generated closer
-	SetEventBus(eventBus) // Set global variable (may be redundant, but safe)
+	SetEventBus(eventBus)
 	// <<< END FIX
 
 
 	// --- 3. Initialize Reconciliation Controller ---
 	log.Println("Initializing reconciliation controller...")
-	// Pass the *same* eventBus to the controller
+	// Pass the *same* storageBackend and eventBus to the controller
 	controller := reconcile.NewController(eventBus, storageBackend)
 
 	
@@ -235,6 +239,13 @@ func runServer(cmd *cobra.Command, args []string) error {
 	if config.Debug {
 		r.Mount("/debug", middleware.Profiler())
 	}
+
+	// <<< FIX: Add the generated event middleware
+	if internal_events.EventsEnabled {
+		r.Use(internal_events.EventMiddleware)
+	}
+	// <<< END FIX
+
 	// This function registers the handlers that use the generated storage
 	RegisterGeneratedRoutes(r) 
 	r.Get("/health", healthHandler)
@@ -285,6 +296,7 @@ func runServer(cmd *cobra.Command, args []string) error {
 }
 
 // Health check handler
+// <<< FIX: Corrected typo http.Writerr to http.ResponseWriter
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
