@@ -285,7 +285,7 @@ func runServer(cmd *cobra.Command, args []string) error {
 }
 
 // Health check handler
-func healthHandler(w http.Writerr, r *http.Request) {
+func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status":"healthy","service":"inventory-api"}`))
