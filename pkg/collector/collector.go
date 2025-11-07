@@ -75,6 +75,11 @@ func CollectAndPost(bmcIP string) error {
 
 		if _, isChild := childToParentURI[redfishURI]; !isChild {
 			tempName := fmt.Sprintf("%s-%s", status.DeviceType, status.SerialNumber)
+			// Handle blank serial number for name
+			if status.SerialNumber == "" {
+				tempName = fmt.Sprintf("%s-%s", status.DeviceType, strings.ReplaceAll(redfishURI, "/", "-"))
+			}
+			
 			fmt.Printf("-> Creating resource envelope for (Parent) %s...\n", tempName)
 
 			createReq := fabricaclient.CreateDeviceRequest{Name: tempName}
@@ -119,6 +124,11 @@ func CollectAndPost(bmcIP string) error {
 
 			status.ParentID = parentUUID
 			tempName := fmt.Sprintf("%s-%s", status.DeviceType, status.SerialNumber)
+			// Handle blank serial number for name
+			if status.SerialNumber == "" {
+				tempName = fmt.Sprintf("%s-%s", status.DeviceType, strings.ReplaceAll(redfishURI, "/", "-"))
+			}
+
 			fmt.Printf("-> Creating resource envelope for (Child) %s...\n", tempName)
 
 			createReq := fabricaclient.CreateDeviceRequest{Name: tempName}
