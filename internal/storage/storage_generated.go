@@ -24,6 +24,7 @@ import (
 	fabricaStorage "github.com/openchami/fabrica/pkg/storage"
 
 	"github.com/user/inventory-api/pkg/resources/device"
+	"github.com/user/inventory-api/pkg/resources/discoverysnapshot"
 )
 
 // Backend is the storage backend used by all storage operations.
@@ -230,6 +231,173 @@ func ListDeviceUIDs(ctx context.Context) ([]string, error) {
 	return uids, nil
 }
 
+// DiscoverySnapshot storage operations
+
+// LoadAllDiscoverySnapshots retrieves all DiscoverySnapshot resources.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeouts
+//
+// Returns:
+//   - []*discoverysnapshot.DiscoverySnapshot: Slice of DiscoverySnapshot resources
+//   - error: Any error that occurred during loading
+func LoadAllDiscoverySnapshots(ctx context.Context) ([]*discoverysnapshot.DiscoverySnapshot, error) {
+	ensureBackend()
+
+	rawData, err := Backend.LoadAll(ctx, "DiscoverySnapshot")
+	if err != nil {
+		return nil, fmt.Errorf("failed to load all discoverysnapshots: %w", err)
+	}
+
+	discoverysnapshots := make([]*discoverysnapshot.DiscoverySnapshot, 0, len(rawData))
+	for _, raw := range rawData {
+		discoverySnapshot := &discoverysnapshot.DiscoverySnapshot{}
+		if err := json.Unmarshal(raw, discoverySnapshot); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal DiscoverySnapshot: %w", err)
+		}
+		discoverysnapshots = append(discoverysnapshots, discoverySnapshot)
+	}
+
+	return discoverysnapshots, nil
+}
+
+// LoadDiscoverySnapshot retrieves a single DiscoverySnapshot resource by UID.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeouts
+//   - uid: Unique identifier of the DiscoverySnapshot resource
+//
+// Returns:
+//   - *discoverysnapshot.DiscoverySnapshot: The DiscoverySnapshot resource
+//   - error: fabricaStorage.ErrNotFound if resource doesn't exist, other errors for failures
+func LoadDiscoverySnapshot(ctx context.Context, uid string) (*discoverysnapshot.DiscoverySnapshot, error) {
+	ensureBackend()
+
+	rawData, err := Backend.Load(ctx, "DiscoverySnapshot", uid)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load DiscoverySnapshot %s: %w", uid, err)
+	}
+
+	discoverySnapshot := &discoverysnapshot.DiscoverySnapshot{}
+	if err := json.Unmarshal(rawData, discoverySnapshot); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal DiscoverySnapshot: %w", err)
+	}
+
+	return discoverySnapshot, nil
+}
+
+// SaveDiscoverySnapshot stores a DiscoverySnapshot resource.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeouts
+//   - discoverySnapshot: The DiscoverySnapshot resource to save
+//
+// Returns:
+//   - error: Any error that occurred during saving
+func SaveDiscoverySnapshot(ctx context.Context, discoverySnapshot *discoverysnapshot.DiscoverySnapshot) error {
+	ensureBackend()
+
+	data, err := json.Marshal(discoverySnapshot)
+	if err != nil {
+		return fmt.Errorf("failed to marshal DiscoverySnapshot: %w", err)
+	}
+
+	if err := Backend.Save(ctx, "DiscoverySnapshot", discoverySnapshot.Metadata.UID, data); err != nil {
+		return fmt.Errorf("failed to save DiscoverySnapshot: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateDiscoverySnapshot updates an existing DiscoverySnapshot resource.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeouts
+//   - discoverySnapshot: The DiscoverySnapshot resource to update
+//
+// Returns:
+//   - error: fabricaStorage.ErrNotFound if resource doesn't exist, other errors for failures
+func UpdateDiscoverySnapshot(ctx context.Context, discoverySnapshot *discoverysnapshot.DiscoverySnapshot) error {
+	ensureBackend()
+
+	// Check if resource exists first
+	exists, err := Backend.Exists(ctx, "DiscoverySnapshot", discoverySnapshot.Metadata.UID)
+	if err != nil {
+		return fmt.Errorf("failed to check DiscoverySnapshot existence: %w", err)
+	}
+	if !exists {
+		return fabricaStorage.ErrNotFound
+	}
+
+	data, err := json.Marshal(discoverySnapshot)
+	if err != nil {
+		return fmt.Errorf("failed to marshal DiscoverySnapshot: %w", err)
+	}
+
+	if err := Backend.Save(ctx, "DiscoverySnapshot", discoverySnapshot.Metadata.UID, data); err != nil {
+		return fmt.Errorf("failed to update DiscoverySnapshot: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteDiscoverySnapshot removes a DiscoverySnapshot resource by UID.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeouts
+//   - uid: Unique identifier of the DiscoverySnapshot resource
+//
+// Returns:
+//   - error: fabricaStorage.ErrNotFound if resource doesn't exist, other errors for failures
+func DeleteDiscoverySnapshot(ctx context.Context, uid string) error {
+	ensureBackend()
+
+	if err := Backend.Delete(ctx, "DiscoverySnapshot", uid); err != nil {
+		return fmt.Errorf("failed to delete DiscoverySnapshot %s: %w", uid, err)
+	}
+
+	return nil
+}
+
+// ExistsDiscoverySnapshot checks if a DiscoverySnapshot resource exists.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeouts
+//   - uid: Unique identifier of the DiscoverySnapshot resource
+//
+// Returns:
+//   - bool: true if the resource exists
+//   - error: Any error that occurred during the check
+func ExistsDiscoverySnapshot(ctx context.Context, uid string) (bool, error) {
+	ensureBackend()
+
+	exists, err := Backend.Exists(ctx, "DiscoverySnapshot", uid)
+	if err != nil {
+		return false, fmt.Errorf("failed to check DiscoverySnapshot existence: %w", err)
+	}
+
+	return exists, nil
+}
+
+// ListDiscoverySnapshotUIDs returns UIDs of all DiscoverySnapshot resources.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeouts
+//
+// Returns:
+//   - []string: Array of DiscoverySnapshot resource UIDs
+//   - error: Any error that occurred during listing
+func ListDiscoverySnapshotUIDs(ctx context.Context) ([]string, error) {
+	ensureBackend()
+
+	uids, err := Backend.List(ctx, "DiscoverySnapshot")
+	if err != nil {
+		return nil, fmt.Errorf("failed to list DiscoverySnapshot UIDs: %w", err)
+	}
+
+	return uids, nil
+}
+
 // StorageClient wraps a StorageBackend to implement reconcile.ClientInterface.
 //
 // This adapter allows reconcilers to use the storage backend through a
@@ -277,6 +445,12 @@ func (c *StorageClient) Get(ctx context.Context, kind, uid string) (interface{},
 			return nil, fmt.Errorf("failed to unmarshal Device: %w", err)
 		}
 		return &resource, nil
+	case "DiscoverySnapshot":
+		var resource discoverysnapshot.DiscoverySnapshot
+		if err := json.Unmarshal(rawData, &resource); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal DiscoverySnapshot: %w", err)
+		}
+		return &resource, nil
 	default:
 		return nil, fmt.Errorf("unknown resource kind: %s", kind)
 	}
@@ -309,6 +483,16 @@ func (c *StorageClient) List(ctx context.Context, kind string) ([]interface{}, e
 			result = append(result, &resource)
 		}
 		return result, nil
+	case "DiscoverySnapshot":
+		result := make([]interface{}, 0, len(rawData))
+		for _, raw := range rawData {
+			var resource discoverysnapshot.DiscoverySnapshot
+			if err := json.Unmarshal(raw, &resource); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal DiscoverySnapshot: %w", err)
+			}
+			result = append(result, &resource)
+		}
+		return result, nil
 	default:
 		return nil, fmt.Errorf("unknown resource kind: %s", kind)
 	}
@@ -332,6 +516,8 @@ func (c *StorageClient) Update(ctx context.Context, resource interface{}) error 
 	switch res := resource.(type) {
 	case *device.Device:
 		return c.backend.Save(ctx, "Device", res.Metadata.UID, data)
+	case *discoverysnapshot.DiscoverySnapshot:
+		return c.backend.Save(ctx, "DiscoverySnapshot", res.Metadata.UID, data)
 	default:
 		return fmt.Errorf("unknown resource type: %T", resource)
 	}

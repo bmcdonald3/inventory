@@ -3,9 +3,13 @@ package resources
 
 import (
 	"fmt"
+		"os"
+		"path/filepath"
+		"strings"
 
 	"github.com/openchami/fabrica/pkg/codegen"
 	"github.com/user/inventory-api/pkg/resources/device"
+	"github.com/user/inventory-api/pkg/resources/discoverysnapshot"
 )
 
 // RegisterAllResources registers all discovered resources with the generator.
@@ -15,5 +19,22 @@ func RegisterAllResources(gen *codegen.Generator) error {
 		return fmt.Errorf("failed to register Device: %w", err)
 	}
 
+	if err := gen.RegisterResource(&discoverysnapshot.DiscoverySnapshot{}); err != nil {
+		return fmt.Errorf("failed to register DiscoverySnapshot: %w", err)
+	}
+
 	return nil
 }
+
+	// hasVersioningMarker inspects the resource source file for the versioning marker comment.
+	func hasVersioningMarker(resourceName string) bool {
+		// Derive path: pkg/resources/<lower(resourceName)>/<lower(resourceName)>.go
+		pkg := strings.ToLower(resourceName)
+		path := filepath.Join("pkg", "resources", pkg, pkg+".go")
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return false
+		}
+		content := string(data)
+		return strings.Contains(content, "+fabrica:resource-versioning=enabled")
+	}

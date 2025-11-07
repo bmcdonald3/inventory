@@ -26,6 +26,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3gen"
 	"github.com/user/inventory-api/pkg/resources/device"
+	"github.com/user/inventory-api/pkg/resources/discoverysnapshot"
 )
 
 // ServeOpenAPISpec returns the OpenAPI 3.0 specification
@@ -105,6 +106,7 @@ func GenerateOpenAPISpec() *openapi3.T {
 
 	// Register all resource paths
 	registerDevicePaths(spec)
+	registerDiscoverySnapshotPaths(spec)
 
 	return spec
 }
@@ -258,6 +260,157 @@ func registerDevicePaths(spec *openapi3.T) {
 	// Add paths to spec
 	spec.Paths.Set("/devices", collectionPath)
 	spec.Paths.Set("/devices/{uid}", itemPath)
+}
+
+// registerDiscoverySnapshotPaths registers OpenAPI paths for DiscoverySnapshot resources
+func registerDiscoverySnapshotPaths(spec *openapi3.T) {
+	// Generate schemas from Go types - NO ANNOTATIONS NEEDED
+	resourceSchema, _ := openapi3gen.NewSchemaRefForValue(&discoverysnapshot.DiscoverySnapshot{}, spec.Components.Schemas)
+	spec.Components.Schemas["DiscoverySnapshot"] = resourceSchema
+
+	createReqSchema, _ := openapi3gen.NewSchemaRefForValue(&CreateDiscoverySnapshotRequest{}, spec.Components.Schemas)
+	spec.Components.Schemas["CreateDiscoverySnapshotRequest"] = createReqSchema
+
+	updateReqSchema, _ := openapi3gen.NewSchemaRefForValue(&UpdateDiscoverySnapshotRequest{}, spec.Components.Schemas)
+	spec.Components.Schemas["UpdateDiscoverySnapshotRequest"] = updateReqSchema
+
+	// Error response schema
+	if _, exists := spec.Components.Schemas["ErrorResponse"]; !exists {
+		errorSchema := openapi3.NewObjectSchema().
+			WithProperty("error", openapi3.NewStringSchema()).
+			WithRequired([]string{"error"})
+		spec.Components.Schemas["ErrorResponse"] = &openapi3.SchemaRef{Value: errorSchema}
+	}
+
+	// DELETE response schema
+	if _, exists := spec.Components.Schemas["DeleteResponse"]; !exists {
+		deleteSchema, _ := openapi3gen.NewSchemaRefForValue(&DeleteResponse{}, spec.Components.Schemas)
+		spec.Components.Schemas["DeleteResponse"] = deleteSchema
+	}
+
+	// List DiscoverySnapshots operation
+	listOp := openapi3.NewOperation()
+	listOp.OperationID = "listDiscoverySnapshots"
+	listOp.Summary = "List all DiscoverySnapshot resources"
+	listOp.Description = "Returns a list of all DiscoverySnapshot resources in the inventory"
+	listOp.Tags = []string{"DiscoverySnapshot"}
+	listOp.Responses = openapi3.NewResponses()
+	arraySchema := openapi3.NewArraySchema()
+	arraySchema.Items = &openapi3.SchemaRef{Ref: "#/components/schemas/DiscoverySnapshot"}
+	listOp.Responses.Set("200", &openapi3.ResponseRef{
+		Value: openapi3.NewResponse().
+			WithDescription("Successful response").
+			WithJSONSchemaRef(&openapi3.SchemaRef{Value: arraySchema}),
+	})
+	listOp.Responses.Set("500", errorResponse())
+
+	// Create DiscoverySnapshot operation
+	createOp := openapi3.NewOperation()
+	createOp.OperationID = "createDiscoverySnapshot"
+	createOp.Summary = "Create a new DiscoverySnapshot resource"
+	createOp.Description = "Creates a new DiscoverySnapshot resource with the provided specification"
+	createOp.Tags = []string{"DiscoverySnapshot"}
+	createOp.RequestBody = &openapi3.RequestBodyRef{
+		Value: openapi3.NewRequestBody().
+			WithRequired(true).
+			WithJSONSchemaRef(&openapi3.SchemaRef{
+				Ref: "#/components/schemas/CreateDiscoverySnapshotRequest",
+			}),
+	}
+	createOp.Responses = openapi3.NewResponses()
+	createOp.Responses.Set("201", &openapi3.ResponseRef{
+		Value: openapi3.NewResponse().
+			WithDescription("Resource created successfully").
+			WithJSONSchemaRef(&openapi3.SchemaRef{
+				Ref: "#/components/schemas/DiscoverySnapshot",
+			}),
+	})
+	createOp.Responses.Set("400", errorResponse())
+	createOp.Responses.Set("500", errorResponse())
+
+	// Get DiscoverySnapshot operation
+	getOp := openapi3.NewOperation()
+	getOp.OperationID = "getDiscoverySnapshot"
+	getOp.Summary = "Get a specific DiscoverySnapshot resource"
+	getOp.Description = "Returns details of a specific DiscoverySnapshot resource by UID"
+	getOp.Tags = []string{"DiscoverySnapshot"}
+	getOp.Responses = openapi3.NewResponses()
+	getOp.Responses.Set("200", &openapi3.ResponseRef{
+		Value: openapi3.NewResponse().
+			WithDescription("Successful response").
+			WithJSONSchemaRef(&openapi3.SchemaRef{
+				Ref: "#/components/schemas/DiscoverySnapshot",
+			}),
+	})
+	getOp.Responses.Set("404", errorResponse())
+	getOp.Responses.Set("500", errorResponse())
+
+	// Update DiscoverySnapshot operation
+	updateOp := openapi3.NewOperation()
+	updateOp.OperationID = "updateDiscoverySnapshot"
+	updateOp.Summary = "Update a DiscoverySnapshot resource"
+	updateOp.Description = "Updates an existing DiscoverySnapshot resource with new values"
+	updateOp.Tags = []string{"DiscoverySnapshot"}
+	updateOp.RequestBody = &openapi3.RequestBodyRef{
+		Value: openapi3.NewRequestBody().
+			WithRequired(true).
+			WithJSONSchemaRef(&openapi3.SchemaRef{
+				Ref: "#/components/schemas/UpdateDiscoverySnapshotRequest",
+			}),
+	}
+	updateOp.Responses = openapi3.NewResponses()
+	updateOp.Responses.Set("200", &openapi3.ResponseRef{
+		Value: openapi3.NewResponse().
+			WithDescription("Resource updated successfully").
+			WithJSONSchemaRef(&openapi3.SchemaRef{
+				Ref: "#/components/schemas/DiscoverySnapshot",
+			}),
+	})
+	updateOp.Responses.Set("400", errorResponse())
+	updateOp.Responses.Set("404", errorResponse())
+	updateOp.Responses.Set("500", errorResponse())
+
+	// Delete DiscoverySnapshot operation
+	deleteOp := openapi3.NewOperation()
+	deleteOp.OperationID = "deleteDiscoverySnapshot"
+	deleteOp.Summary = "Delete a DiscoverySnapshot resource"
+	deleteOp.Description = "Removes a DiscoverySnapshot resource from the inventory"
+	deleteOp.Tags = []string{"DiscoverySnapshot"}
+	deleteOp.Responses = openapi3.NewResponses()
+	deleteOp.Responses.Set("200", &openapi3.ResponseRef{
+		Value: openapi3.NewResponse().
+			WithDescription("Resource deleted successfully").
+			WithJSONSchemaRef(&openapi3.SchemaRef{
+				Ref: "#/components/schemas/DeleteResponse",
+			}),
+	})
+	deleteOp.Responses.Set("400", errorResponse())
+	deleteOp.Responses.Set("404", errorResponse())
+	deleteOp.Responses.Set("500", errorResponse())
+
+	// Create path items
+	collectionPath := &openapi3.PathItem{
+		Get:  listOp,
+		Post: createOp,
+	}
+
+	uidParam := openapi3.NewPathParameter("uid").
+		WithDescription("Unique identifier of the DiscoverySnapshot resource").
+		WithRequired(true).
+		WithSchema(openapi3.NewStringSchema())
+
+	itemPath := &openapi3.PathItem{
+		Get:    getOp,
+		Put:    updateOp,
+		Delete: deleteOp,
+		Parameters: []*openapi3.ParameterRef{
+			{Value: uidParam},
+		},
+	}
+
+	// Add paths to spec
+	spec.Paths.Set("/discoverysnapshots", collectionPath)
+	spec.Paths.Set("/discoverysnapshots/{uid}", itemPath)
 }
 
 // Helper function for error responses

@@ -38,6 +38,8 @@ import (
 	"net/http"
 
 	"github.com/user/inventory-api/pkg/resources/device"
+
+	"github.com/user/inventory-api/pkg/resources/discoverysnapshot"
 )
 
 // DeviceResponse represents the response for Device operations
@@ -57,6 +59,25 @@ type UpdateDeviceRequest struct {
 	Name              string            `json:"name,omitempty"`
 	Labels            map[string]string `json:"labels,omitempty"`
 	Annotations       map[string]string `json:"annotations,omitempty"`
+}
+
+// DiscoverySnapshotResponse represents the response for DiscoverySnapshot operations
+type DiscoverySnapshotResponse = discoverysnapshot.DiscoverySnapshot
+
+// CreateDiscoverySnapshotRequest represents a request to create a DiscoverySnapshot
+type CreateDiscoverySnapshotRequest struct {
+	discoverysnapshot.DiscoverySnapshotSpec `json:",inline"`
+	Name                                    string            `json:"name" validate:"required"`
+	Labels                                  map[string]string `json:"labels,omitempty"`
+	Annotations                             map[string]string `json:"annotations,omitempty"`
+}
+
+// UpdateDiscoverySnapshotRequest represents a request to update a DiscoverySnapshot
+type UpdateDiscoverySnapshotRequest struct {
+	discoverysnapshot.DiscoverySnapshotSpec `json:",inline,omitempty"`
+	Name                                    string            `json:"name,omitempty"`
+	Labels                                  map[string]string `json:"labels,omitempty"`
+	Annotations                             map[string]string `json:"annotations,omitempty"`
 }
 
 // ErrorResponse represents an error response

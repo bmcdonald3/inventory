@@ -13,6 +13,7 @@
 //
 // This file registers routes for all resource types:
 //   - /devices (Device operations)
+//   - /discoverysnapshots (DiscoverySnapshot operations)
 //
 // Route patterns:
 //   - GET    /resource              -> List all resources
@@ -55,6 +56,24 @@ func RegisterGeneratedRoutes(r chi.Router) {
 			r.Route("/status", func(r chi.Router) {
 				r.Put("/", UpdateDeviceStatus)
 				r.Patch("/", PatchDeviceStatus)
+			})
+		})
+	})
+
+	// DiscoverySnapshot routes
+	r.Route("/discoverysnapshots", func(r chi.Router) {
+		r.Get("/", GetDiscoverySnapshots)
+		r.Post("/", CreateDiscoverySnapshot)
+		r.Route("/{uid}", func(r chi.Router) {
+			r.Get("/", GetDiscoverySnapshot)
+			r.Put("/", UpdateDiscoverySnapshot)
+			r.Patch("/", PatchDiscoverySnapshot)
+			r.Delete("/", DeleteDiscoverySnapshot)
+
+			// Status subresource
+			r.Route("/status", func(r chi.Router) {
+				r.Put("/", UpdateDiscoverySnapshotStatus)
+				r.Patch("/", PatchDiscoverySnapshotStatus)
 			})
 		})
 	})

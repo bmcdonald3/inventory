@@ -13,6 +13,7 @@
 //
 // Generated commands for each resource:
 //   - client device [list|get|create|update|patch|delete]
+//   - client discoverysnapshot [list|get|create|update|patch|delete]
 //
 // Global flags (available for all commands):
 //
@@ -121,6 +122,7 @@ func init() {
 
 	// Add resource commands
 	rootCmd.AddCommand(deviceCmd)
+	rootCmd.AddCommand(discoverysnapshotCmd)
 
 }
 
@@ -547,4 +549,342 @@ func init() {
 	devicePatchCmd.Flags().StringArray("unset", nil, "Unset field using dot notation")
 	devicePatchCmd.Flags().StringArray("add", nil, "Add value to array field (field=value)")
 	devicePatchCmd.Flags().StringArray("remove", nil, "Remove value from array field (field=value)")
+}
+
+// DiscoverySnapshot commands
+var discoverysnapshotCmd = &cobra.Command{
+	Use:   "discoverysnapshot",
+	Short: "Manage discoverysnapshots",
+	Long:  `Create, read, update, patch, and delete discoverysnapshots.`,
+}
+
+var discoverysnapshotListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List all discoverysnapshots",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		c, err := getClient()
+		if err != nil {
+			return fmt.Errorf("failed to create client: %w", err)
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+
+		items, err := c.GetDiscoverySnapshots(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to list discoverysnapshots: %w", err)
+		}
+
+		return printOutput(items)
+	},
+}
+
+var discoverysnapshotGetCmd = &cobra.Command{
+	Use:   "get [uid]",
+	Short: "Get a DiscoverySnapshot by UID",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		c, err := getClient()
+		if err != nil {
+			return fmt.Errorf("failed to create client: %w", err)
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+
+		item, err := c.GetDiscoverySnapshot(ctx, args[0])
+		if err != nil {
+			return fmt.Errorf("failed to get DiscoverySnapshot: %w", err)
+		}
+
+		return printOutput(item)
+	},
+}
+
+var discoverysnapshotCreateCmd = &cobra.Command{
+	Use:   "create",
+	Short: "Create a new DiscoverySnapshot",
+	Long: `Create a new DiscoverySnapshot.
+
+Examples:
+  # Create from stdin
+  echo '{"source": "example-value", "target": "example-value", "rawData": "[]"}' | client discoverysnapshot create
+
+  # Create with --spec flag
+  client discoverysnapshot create --spec '{"source": "example-value", "target": "example-value", "rawData": "[]"}'
+
+Spec fields:
+  source (string)
+  target (string)
+  rawData (json.RawMessage)
+`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		c, err := getClient()
+		if err != nil {
+			return fmt.Errorf("failed to create client: %w", err)
+		}
+
+		// Read request from flags or stdin
+		reqJSON, _ := cmd.Flags().GetString("spec")
+		var req client.CreateDiscoverySnapshotRequest
+
+		if reqJSON == "" {
+			// Read from stdin if no spec provided
+			decoder := json.NewDecoder(os.Stdin)
+			if err := decoder.Decode(&req); err != nil {
+				return fmt.Errorf("failed to decode request from stdin: %w", err)
+			}
+		} else {
+			// Parse request from JSON string
+			if err := json.Unmarshal([]byte(reqJSON), &req); err != nil {
+				return fmt.Errorf("failed to parse request JSON: %w", err)
+			}
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+
+		item, err := c.CreateDiscoverySnapshot(ctx, req)
+		if err != nil {
+			return fmt.Errorf("failed to create DiscoverySnapshot: %w", err)
+		}
+
+		return printOutput(item)
+	},
+}
+
+var discoverysnapshotUpdateCmd = &cobra.Command{
+	Use:   "update [uid]",
+	Short: "Update an existing DiscoverySnapshot",
+	Long: `Update an existing DiscoverySnapshot.
+
+Examples:
+  # Update from stdin
+  echo '{"source": "example-value", "target": "example-value", "rawData": "[]"}' | client discoverysnapshot update <uid>
+
+  # Update with --spec flag
+  client discoverysnapshot update <uid> --spec '{"source": "example-value", "target": "example-value", "rawData": "[]"}'
+
+Spec fields:
+  source (string)
+  target (string)
+  rawData (json.RawMessage)
+`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		c, err := getClient()
+		if err != nil {
+			return fmt.Errorf("failed to create client: %w", err)
+		}
+
+		// Read request from flags or stdin
+		reqJSON, _ := cmd.Flags().GetString("spec")
+		var req client.UpdateDiscoverySnapshotRequest
+
+		if reqJSON == "" {
+			// Read from stdin if no spec provided
+			decoder := json.NewDecoder(os.Stdin)
+			if err := decoder.Decode(&req); err != nil {
+				return fmt.Errorf("failed to decode request from stdin: %w", err)
+			}
+		} else {
+			// Parse request from JSON string
+			if err := json.Unmarshal([]byte(reqJSON), &req); err != nil {
+				return fmt.Errorf("failed to parse request JSON: %w", err)
+			}
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+
+		item, err := c.UpdateDiscoverySnapshot(ctx, args[0], req)
+		if err != nil {
+			return fmt.Errorf("failed to update DiscoverySnapshot: %w", err)
+		}
+
+		return printOutput(item)
+	},
+}
+
+var discoverysnapshotPatchCmd = &cobra.Command{
+	Use:   "patch [uid]",
+	Short: "Patch a DiscoverySnapshot",
+	Long: `Patch an existing DiscoverySnapshot spec using various patch formats.
+
+IMPORTANT: Only the spec portion of the resource can be patched.
+Metadata (name, labels, annotations) and status are managed by the API.
+
+Examples:
+  # JSON Merge Patch (simple merge) - patch spec fields
+  client discoverysnapshot patch <uid> --spec '{"manufacturer":"Intel","model":"Updated Model"}'
+
+  # Shorthand patch (dot notation - most convenient)
+  client discoverysnapshot patch <uid> --set manufacturer=Intel --set model="Updated Model" --unset customField
+
+  # JSON Patch (RFC 6902 - most powerful)
+  client discoverysnapshot patch <uid> --json-patch '[
+    {"op":"replace","path":"/manufacturer","value":"Intel"},
+    {"op":"add","path":"/properties/newField","value":"newValue"}
+  ]'
+
+  # From stdin (JSON Merge Patch format)
+  echo '{"manufacturer":"AMD","partNumber":"RYZEN-9000"}' | client discoverysnapshot patch <uid>
+
+Patch Formats:
+  --spec        JSON Merge Patch (RFC 7386) - simple object merge
+  --set/--unset Shorthand patch - dot notation for convenience
+  --json-patch  JSON Patch (RFC 6902) - operation-based patches
+  stdin         JSON Merge Patch format
+
+Shorthand Operations (spec fields only):
+  --set field=value     Set a spec field value (supports dot notation)
+  --unset field         Remove a spec field (supports dot notation)
+  --add field=value     Add to spec array field (field must end with '.-')
+  --remove field=value  Remove from spec array field
+
+Note: All patch operations target the resource spec only.
+Attempts to patch metadata or status fields will be ignored.`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		c, err := getClient()
+		if err != nil {
+			return fmt.Errorf("failed to create client: %w", err)
+		}
+
+		uid := args[0]
+
+		// Get patch flags
+		specPatch, _ := cmd.Flags().GetString("spec")
+		jsonPatch, _ := cmd.Flags().GetString("json-patch")
+		setPairs, _ := cmd.Flags().GetStringArray("set")
+		unsetFields, _ := cmd.Flags().GetStringArray("unset")
+		addPairs, _ := cmd.Flags().GetStringArray("add")
+		removePairs, _ := cmd.Flags().GetStringArray("remove")
+
+		var patchData []byte
+		var contentType string
+
+		// Determine patch format and build patch data
+		if jsonPatch != "" {
+			// JSON Patch (RFC 6902)
+			patchData = []byte(jsonPatch)
+			contentType = "application/json-patch+json"
+		} else if len(setPairs) > 0 || len(unsetFields) > 0 || len(addPairs) > 0 || len(removePairs) > 0 {
+			// Shorthand patch - convert to JSON Merge Patch
+			patch := make(map[string]interface{})
+
+			// Process --set flags
+			for _, setPair := range setPairs {
+				parts := strings.SplitN(setPair, "=", 2)
+				if len(parts) != 2 {
+					return fmt.Errorf("invalid --set format: %s (expected field=value)", setPair)
+				}
+				setNestedField(patch, parts[0], parts[1])
+			}
+
+			// Process --unset flags
+			for _, field := range unsetFields {
+				setNestedField(patch, field, nil)
+			}
+
+			// Process --add flags (add to arrays)
+			for _, addPair := range addPairs {
+				parts := strings.SplitN(addPair, "=", 2)
+				if len(parts) != 2 {
+					return fmt.Errorf("invalid --add format: %s (expected field=value)", addPair)
+				}
+				// For arrays, we'll use JSON Merge Patch append syntax if possible
+				// Otherwise convert to JSON Patch
+				setNestedField(patch, parts[0], parts[1])
+			}
+
+			// Process --remove flags
+			for _, removePair := range removePairs {
+				parts := strings.SplitN(removePair, "=", 2)
+				if len(parts) != 2 {
+					return fmt.Errorf("invalid --remove format: %s (expected field=value)", removePair)
+				}
+				// Remove operations are complex and might need JSON Patch
+				// For now, we'll handle simple cases
+				return fmt.Errorf("--remove operations require --json-patch format")
+			}
+
+			patchBytes, err := json.Marshal(patch)
+			if err != nil {
+				return fmt.Errorf("failed to marshal shorthand patch: %w", err)
+			}
+			patchData = patchBytes
+			contentType = "application/merge-patch+json"
+		} else if specPatch != "" {
+			// JSON Merge Patch from --spec
+			patchData = []byte(specPatch)
+			contentType = "application/merge-patch+json"
+		} else {
+			// Read from stdin (default to JSON Merge Patch)
+			decoder := json.NewDecoder(os.Stdin)
+			var patch interface{}
+			if err := decoder.Decode(&patch); err != nil {
+				return fmt.Errorf("failed to decode patch from stdin: %w", err)
+			}
+			patchBytes, err := json.Marshal(patch)
+			if err != nil {
+				return fmt.Errorf("failed to marshal patch: %w", err)
+			}
+			patchData = patchBytes
+			contentType = "application/merge-patch+json"
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+
+		item, err := c.PatchDiscoverySnapshot(ctx, uid, patchData, contentType)
+		if err != nil {
+			return fmt.Errorf("failed to patch DiscoverySnapshot: %w", err)
+		}
+
+		return printOutput(item)
+	},
+}
+
+var discoverysnapshotDeleteCmd = &cobra.Command{
+	Use:   "delete [uid]",
+	Short: "Delete a DiscoverySnapshot",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		c, err := getClient()
+		if err != nil {
+			return fmt.Errorf("failed to create client: %w", err)
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+
+		if err := c.DeleteDiscoverySnapshot(ctx, args[0]); err != nil {
+			return fmt.Errorf("failed to delete DiscoverySnapshot: %w", err)
+		}
+
+		fmt.Printf("DiscoverySnapshot %s deleted successfully\n", args[0])
+		return nil
+	},
+}
+
+func init() {
+	discoverysnapshotCmd.AddCommand(discoverysnapshotListCmd)
+	discoverysnapshotCmd.AddCommand(discoverysnapshotGetCmd)
+	discoverysnapshotCmd.AddCommand(discoverysnapshotCreateCmd)
+	discoverysnapshotCmd.AddCommand(discoverysnapshotUpdateCmd)
+	discoverysnapshotCmd.AddCommand(discoverysnapshotPatchCmd)
+	discoverysnapshotCmd.AddCommand(discoverysnapshotDeleteCmd)
+
+	// Add spec flag for create and update commands
+	discoverysnapshotCreateCmd.Flags().String("spec", "", "DiscoverySnapshot specification in JSON format")
+	discoverysnapshotUpdateCmd.Flags().String("spec", "", "DiscoverySnapshot specification in JSON format")
+
+	// Add patch command flags
+	discoverysnapshotPatchCmd.Flags().String("spec", "", "JSON Merge Patch specification")
+	discoverysnapshotPatchCmd.Flags().String("json-patch", "", "JSON Patch operations (RFC 6902)")
+	discoverysnapshotPatchCmd.Flags().StringArray("set", nil, "Set field value using dot notation (field=value)")
+	discoverysnapshotPatchCmd.Flags().StringArray("unset", nil, "Unset field using dot notation")
+	discoverysnapshotPatchCmd.Flags().StringArray("add", nil, "Add value to array field (field=value)")
+	discoverysnapshotPatchCmd.Flags().StringArray("remove", nil, "Remove value from array field (field=value)")
 }

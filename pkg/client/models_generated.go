@@ -35,6 +35,7 @@ package client
 
 import (
 	"github.com/user/inventory-api/pkg/resources/device"
+	"github.com/user/inventory-api/pkg/resources/discoverysnapshot"
 )
 
 // CreateDeviceRequest represents a request to create a Device
@@ -51,6 +52,22 @@ type UpdateDeviceRequest struct {
 	Name              string            `json:"name,omitempty"`
 	Labels            map[string]string `json:"labels,omitempty"`
 	Annotations       map[string]string `json:"annotations,omitempty"`
+}
+
+// CreateDiscoverySnapshotRequest represents a request to create a DiscoverySnapshot
+type CreateDiscoverySnapshotRequest struct {
+	discoverysnapshot.DiscoverySnapshotSpec `json:",inline"`
+	Name                                    string            `json:"name" validate:"required"`
+	Labels                                  map[string]string `json:"labels,omitempty"`
+	Annotations                             map[string]string `json:"annotations,omitempty"`
+}
+
+// UpdateDiscoverySnapshotRequest represents a request to update a DiscoverySnapshot
+type UpdateDiscoverySnapshotRequest struct {
+	discoverysnapshot.DiscoverySnapshotSpec `json:",inline,omitempty"`
+	Name                                    string            `json:"name,omitempty"`
+	Labels                                  map[string]string `json:"labels,omitempty"`
+	Annotations                             map[string]string `json:"annotations,omitempty"`
 }
 
 // DeleteResponse represents a successful deletion response

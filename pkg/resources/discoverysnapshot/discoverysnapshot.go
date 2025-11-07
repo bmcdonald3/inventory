@@ -6,7 +6,7 @@ package discoverysnapshot
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json" // Make sure this import is here
 	"github.com/openchami/fabrica/pkg/resource"
 )
 
@@ -52,16 +52,9 @@ type DiscoverySnapshotStatus struct {
 	Conditions []resource.Condition `json:"conditions,omitempty"`
 }
 
-// <--- 2. FIXED: Removed the extra '}' that was here
-
 // Validate implements custom validation logic for DiscoverySnapshot
 func (r *DiscoverySnapshot) Validate(ctx context.Context) error {
 	// Add custom validation logic here
-	// Example:
-	// if r.Spec.Name == "forbidden" {
-	//     return errors.New("name 'forbidden' is not allowed")
-	// }
-
 	return nil
 }
 
@@ -76,7 +69,7 @@ func (r *DiscoverySnapshot) GetName() string {
 }
 
 // GetUID returns the UID of the resource
-func (r* DiscoverySnapshot) GetUID() string {
+func (r *DiscoverySnapshot) GetUID() string {
 	return r.Metadata.UID
 }
 
