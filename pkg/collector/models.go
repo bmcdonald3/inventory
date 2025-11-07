@@ -1,21 +1,41 @@
-package inventory
+package collector
 
-// SystemInventory holds the discovered devices related to one System/Node.
-type SystemInventory struct {
-	Node  DiscoveredDevice
-	CPUs  []DiscoveredDevice
-	DIMMs []DiscoveredDevice
+import (
+	"net/http"
+
+	// Import the API's canonical resource definition
+	"github.com/user/inventory-api/pkg/resources/device"
+)
+
+// --- Redfish Client Struct ---
+
+// RedfishClient holds connection details and the HTTP client instance.
+type RedfishClient struct {
+	BaseURL    string
+	Username   string
+	Password   string
+	HTTPClient *http.Client
 }
 
-// RedfishCollection defines the structure for Redfish collection responses (e.g., /Systems).
+// --- Redfish Helper Structs ---
+// These are used for unmarshaling Redfish JSON
+
+// SystemInventory holds the discovered devices related to one System/Node.
+// It now holds the canonical DeviceStatus structs.
+type SystemInventory struct {
+	NodeStatus *device.DeviceStatus
+	CPUs       []*device.DeviceStatus
+	DIMMs      []*device.DeviceStatus
+}
+
+// RedfishCollection defines the structure for Redfish collection responses.
 type RedfishCollection struct {
 	Members []struct {
 		ODataID string `json:"@odata.id"`
 	} `json:"Members"`
 }
 
-// CommonRedfishProperties contains the fields required by the Device model,
-// found in various Redfish resources (System, Processor, Memory).
+// CommonRedfishProperties contains the fields required by the Device model.
 type CommonRedfishProperties struct {
 	Manufacturer string `json:"Manufacturer,omitempty"`
 	Model        string `json:"Model,omitempty"`
@@ -26,7 +46,7 @@ type CommonRedfishProperties struct {
 // RedfishSystem defines the structure for a System resource (the Node).
 type RedfishSystem struct {
 	CommonRedfishProperties // Embeds the common fields
-	Processors struct {
+	Processors              struct {
 		ODataID string `json:"@odata.id"`
 	} `json:"Processors"`
 	Memory struct {
@@ -42,13 +62,4 @@ type RedfishProcessor struct {
 // RedfishMemory defines the structure for a Memory resource (the DIMM).
 type RedfishMemory struct {
 	CommonRedfishProperties // Embeds the common fields
-}
-
-// Structs for API interaction
-type Metadata struct {
-	UID string `json:"uid"`
-}
-
-type DeviceResponse struct {
-	Metadata Metadata `json:"metadata"`
 }
