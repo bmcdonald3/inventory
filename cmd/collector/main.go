@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/bmcdonald3/inventory-gather/pkg/inventory" 
 )
 
 var rootCmd = &cobra.Command{
@@ -23,15 +24,23 @@ func init() {
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
+		// This will catch execution errors and print them clearly
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
-// executeGatherAndPost is the main function logic
+// executeGatherAndPost is the main function logic triggered by cobra.
 func executeGatherAndPost(cmd *cobra.Command, args []string) {
-	// Logic from Step 2 will go here
 	fmt.Printf("Starting inventory collection for BMC IP: %s\n", bmcIP)
-
-	// ... call inventory.CollectAndPost(bmcIP) ...
+	
+	// Pass the IP captured by cobra to the core logic
+	err := inventory.CollectAndPost(bmcIP) 
+	if err != nil {
+		// Log the error using cobra's framework
+		fmt.Fprintf(os.Stderr, "Collection Failed: %v\n", err)
+		os.Exit(1)
+	}
+	
+	fmt.Println("Inventory collection and posting completed successfully.")
 }
