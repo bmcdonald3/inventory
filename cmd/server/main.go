@@ -20,9 +20,6 @@ import (
 	// <<< FIX: Alias Fabrica storage interface
 	fabrica_storage "github.com/openchami/fabrica/pkg/storage"
 	"github.com/user/inventory-api/pkg/reconcilers"
-
-	// <<< FIX: Alias your internal storage implementation
-	internal_storage "github.com/user/inventory-api/internal/storage"
 )
 
 // --- Global variables for handlers ---
