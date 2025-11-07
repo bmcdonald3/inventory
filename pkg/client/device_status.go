@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"github.com/bmcdonald3/inventory/pkg/resources/device"
+	"github.com/user/inventory-api/pkg/resources/device"
 )
 
 // UpdateDeviceStatus performs a PUT /devices/{uid}/status request.

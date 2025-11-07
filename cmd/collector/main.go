@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/bmcdonald3/inventory/pkg/collector"
+	"github.com/user/inventory-api/pkg/collector"
 )
 
 var rootCmd = &cobra.Command{
