@@ -22,10 +22,10 @@ import (
 
 	
 
-	
-
-	 "github.com/user/inventory-api/internal/storage"
-	
+	"github.com/openchami/fabrica/pkg/events"
+	"github.com/openchami/fabrica/pkg/reconcile"
+	"github.com/user/inventory-api/internal/storage"
+	"github.com/user/inventory-api/pkg/reconcilers"
 	
 
 	
