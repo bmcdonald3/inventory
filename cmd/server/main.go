@@ -1,275 +1,293 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
+    "context"
+    "fmt"
+    "log"
+    "net/http"
+    "os"
+    "os/signal"
+    "syscall"
+    "time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+    "github.com/go-chi/chi/v5"
+    "github.com/go-chi/chi/v5/middleware"
+    "github.com/spf13/cobra"
+    "github.com/spf13/viper"
 
-	"github.com/openchami/fabrica/pkg/events"
-	"github.com/openchami/fabrica/pkg/reconcile"
-	// <<< FIX: Alias Fabrica storage interface
-	fabrica_storage "github.com/openchami/fabrica/pkg/storage"
-	"github.com/user/inventory-api/pkg/reconcilers"
+    "github.com/openchami/fabrica/pkg/events"
+    "github.com/openchami/fabrica/pkg/reconcile"
+    // Import the base storage interface
+    fabrica_storage "github.com/openchami/fabrica/pkg/storage" 
+    "github.com/user/inventory-api/pkg/reconcilers"
+
+    // Import the GENERATED storage implementation
+    internal_storage "github.com/user/inventory-api/internal/storage"
 )
 
 // --- Global variables for handlers ---
 var (
-	// Use the aliased interface type
-	// <<< FIX: The interface is named StorageBackend
-	globalStorage fabrica_storage.StorageBackend
-	globalEventBus events.EventBus
+    // Use the aliased interface type
+    globalStorage fabrica_storage.StorageBackend
+    globalEventBus events.EventBus
 )
 
 // SetStorageBackend sets the global storage backend
-// <<< FIX: The interface is named StorageBackend
 func SetStorageBackend(s fabrica_storage.StorageBackend) {
-	globalStorage = s
+    globalStorage = s
 }
 
 // SetEventBus sets the global event bus
 func SetEventBus(eb events.EventBus) {
-	globalEventBus = eb
+    globalEventBus = eb
 }
-
 // --- End global variables ---
+
 
 // Config holds all configuration for the service
 type Config struct {
-	// Server Configuration
-	Port         int    `mapstructure:"port"`
-	Host         string `mapstructure:"host"`
-	ReadTimeout  int    `mapstructure:"read_timeout"`
-	WriteTimeout int    `mapstructure:"write_timeout"`
-	IdleTimeout  int    `mapstructure:"idle_timeout"`
+    // Server Configuration
+    Port         int    `mapstructure:"port"`
+    Host         string `mapstructure:"host"`
+    ReadTimeout  int    `mapstructure:"read_timeout"`
+    WriteTimeout int    `mapstructure:"write_timeout"`
+    IdleTimeout  int    `mapstructure:"idle_timeout"`
 
-	// Storage Configuration
-	DataDir string `mapstructure:"data_dir"`
+    // Storage Configuration
+    DataDir string `mapstructure:"data_dir"`
 
-	// Feature Flags
-	Debug bool `mapstructure:"debug"`
+    // Feature Flags
+    Debug bool `mapstructure:"debug"`
 }
 
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
-	return &Config{
-		Port:         8081,
-		Host:         "0.0.0.0",
-		ReadTimeout:  15,
-		WriteTimeout: 15,
-		IdleTimeout:  60,
-		DataDir:      "./data",
-		Debug:        false,
-	}
+    return &Config{
+        Port:         8080,
+        Host:         "0.0.0.0",
+        ReadTimeout:  15,
+        WriteTimeout: 15,
+        IdleTimeout:  60,
+        DataDir:      "./data",
+        Debug:        false,
+    }
 }
 
 var (
-	cfgFile string
-	config  *Config
+    cfgFile string
+    config  *Config
 )
 
 func main() {
-	if err := rootCmd.Execute(); err != nil {
-		log.Fatal(err)
-	}
+    if err := rootCmd.Execute(); err != nil {
+        log.Fatal(err)
+    }
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "inventory-api",
-	Short: "",
-	Long:  `inventory-api - A Fabrica-generated OpenCHAMI service`,
-	RunE:  runServer,
+    Use:   "inventory-api",
+    Short: "",
+    Long:  `inventory-api - A Fabrica-generated OpenCHAMI service`,
+    RunE:  runServer,
 }
 
 var serveCmd = &cobra.Command{
-	Use:   "serve",
-	Short: "Start the inventory-api server",
-	Long:  `Start the inventory-api HTTP server with the configured options`,
-	RunE:  runServer,
+    Use:   "serve",
+    Short: "Start the inventory-api server",
+    Long:  `Start the inventory-api HTTP server with the configured options`,
+    RunE:  runServer,
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
+    cobra.OnInitialize(initConfig)
 
-	// Global flags
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.inventory-api.yaml)")
-	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug logging")
+    // Global flags
+    rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.inventory-api.yaml)")
+    rootCmd.PersistentFlags().Bool("debug", false, "Enable debug logging")
 
-	// Server flags
-	serveCmd.Flags().IntP("port", "p", 8081, "Port to listen on")
-	serveCmd.Flags().String("host", "0.0.0.0", "Host to bind to")
-	serveCmd.Flags().Int("read-timeout", 15, "Read timeout in seconds")
-	serveCmd.Flags().Int("write-timeout", 15, "Write timeout in seconds")
-	serveCmd.Flags().Int("idle-timeout", 60, "Idle timeout in seconds")
+    // Server flags
+    serveCmd.Flags().IntP("port", "p", 8080, "Port to listen on")
+    serveCmd.Flags().String("host", "0.0.0.0", "Host to bind to")
+    serveCmd.Flags().Int("read-timeout", 15, "Read timeout in seconds")
+    serveCmd.Flags().Int("write-timeout", 15, "Write timeout in seconds")
+    serveCmd.Flags().Int("idle-timeout", 60, "Idle timeout in seconds")
 
-	serveCmd.Flags().String("data-dir", "./data", "Directory for file storage")
+    serveCmd.Flags().String("data-dir", "./data", "Directory for file storage")
 
-	// Bind flags to viper
-	viper.BindPFlags(serveCmd.Flags())
-	viper.BindPFlags(rootCmd.PersistentFlags())
+    // Bind flags to viper
+    viper.BindPFlags(serveCmd.Flags())
+    viper.BindPFlags(rootCmd.PersistentFlags())
 
-	// Add subcommands
-	rootCmd.AddCommand(serveCmd)
-	rootCmd.AddCommand(versionCmd)
+    // Add subcommands
+    rootCmd.AddCommand(serveCmd)
+    rootCmd.AddCommand(versionCmd)
 }
 
 func initConfig() {
-	config = DefaultConfig()
+    config = DefaultConfig()
 
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
-	} else {
-		// Search for config in home directory
-		home, err := os.UserHomeDir()
-		cobra.CheckErr(err)
+    if cfgFile != "" {
+        viper.SetConfigFile(cfgFile)
+    } else {
+        // Search for config in home directory
+        home, err := os.UserHomeDir()
+        cobra.CheckErr(err)
 
-		viper.AddConfigPath(home)
-		viper.AddConfigPath(".")
-		viper.SetConfigType("yaml")
-		viper.SetConfigName(".inventory-api")
-	}
+        viper.AddConfigPath(home)
+        viper.AddConfigPath(".")
+        viper.SetConfigType("yaml")
+        viper.SetConfigName(".inventory-api")
+    }
 
-	// Environment variables
-	viper.SetEnvPrefix("INVENTORY-API")
-	viper.AutomaticEnv()
+    // Environment variables
+    viper.SetEnvPrefix("INVENTORY-API")
+    viper.AutomaticEnv()
 
-	// Read config file if it exists
-	if err := viper.ReadInConfig(); err == nil {
-		log.Printf("Using config file: %s", viper.ConfigFileUsed())
-	}
+    // Read config file if it exists
+    if err := viper.ReadInConfig(); err == nil {
+        log.Printf("Using config file: %s", viper.ConfigFileUsed())
+    }
 
-	// Unmarshal config
-	if err := viper.Unmarshal(config); err != nil {
-		log.Fatalf("Unable to decode into config struct: %v", err)
-	}
+    // Unmarshal config
+    if err := viper.Unmarshal(config); err != nil {
+        log.Fatalf("Unable to decode into config struct: %v", err)
+    }
 
-	// Set debug logging
-	if config.Debug {
-		log.SetFlags(log.LstdFlags | log.Lshortfile)
-		log.Println("Debug logging enabled")
-	}
+    // Set debug logging
+    if config.Debug {
+        log.SetFlags(log.LstdFlags | log.Lshortfile)
+        log.Println("Debug logging enabled")
+    }
 }
 
 func runServer(cmd *cobra.Command, args []string) error {
-	log.Printf("Starting inventory-api server...")
+    log.Printf("Starting inventory-api server...")
 
-	// --- 1. Initialize Storage Backend ---
-	// <<< FIX: Call the correct constructor from the fabrica_storage package
-	storageBackend, err := fabrica_storage.NewFileBackend(config.DataDir)
-	if err != nil {
-		return fmt.Errorf("failed to initialize file storage: %w", err)
-	}
-	SetStorageBackend(storageBackend) // Set for global access by handlers
-	log.Printf("File storage initialized in %s", config.DataDir)
+    // --- 1. Initialize Storage Backend ---
+    // <<< FIX: Use the GENERATED InitFileBackend function
+    // This initializes the singleton storage backend used by the generated handlers.
+    if err := internal_storage.InitFileBackend(config.DataDir); err != nil {
+        return fmt.Errorf("failed to initialize file storage: %w", err)
+    }
+    
+    // <<< FIX: Access the public 'Backend' variable from the internal_storage package
+    storageBackend := internal_storage.Backend 
+    if storageBackend == nil {
+         return fmt.Errorf("storage backend is nil after initialization")
+    }
 
-	// --- 2. Initialize Event Bus ---
-	log.Println("Initializing in-memory event bus...")
-	eventBus := events.NewInMemoryEventBus(1000, 10) // 1000 buffer, 10 workers
-	eventBus.Start()
-	defer eventBus.Close() // Ensure bus is closed on shutdown
-	SetEventBus(eventBus) // Set for global access by handlers
+    SetStorageBackend(storageBackend) // Set for global access
+    log.Printf("File storage initialized in %s", config.DataDir)
 
-	// --- 3. Initialize Reconciliation Controller ---
-	log.Println("Initializing reconciliation controller...")
-	controller := reconcile.NewController(eventBus, storageBackend)
 
-	// --- 4. Register Reconcilers ---
-	log.Println("Registering reconcilers...")
-	snapshotReconciler := &reconcilers.DiscoverySnapshotReconciler{
-		BaseReconciler: reconcile.BaseReconciler{
-			EventBus: eventBus,
-			Logger:   reconcile.NewDefaultLogger(), // Simple logger
-		},
-		Storage: storageBackend, // Give it access to storage
-	}
-	controller.RegisterReconciler(snapshotReconciler)
-	log.Printf("Registered reconciler for %s", snapshotReconciler.GetResourceKind())
+    // --- 2. Initialize Event Bus ---
+    log.Println("Initializing in-memory event bus...")
+    eventBus := events.NewInMemoryEventBus(1000, 10) // 1000 buffer, 10 workers
+    eventBus.Start()
+    defer eventBus.Close() // Ensure bus is closed on shutdown
+    SetEventBus(eventBus) // Set for global access by handlers
 
-	// --- 5. Start Controller ---
-	controllerCtx, controllerCancel := context.WithCancel(context.Background())
 
-	go func() {
-		log.Println("Reconciliation controller starting.")
-		if err := controller.Start(controllerCtx); err != nil {
-			log.Printf("Reconciliation controller error: %v", err)
-		}
-	}()
+    // --- 3. Initialize Reconciliation Controller ---
+    log.Println("Initializing reconciliation controller...")
+    // Pass the *same* storageBackend to the controller
+    controller := reconcile.NewController(eventBus, storageBackend)
 
-	// --- 6. Setup Router ---
-	r := chi.NewRouter()
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	if config.Debug {
-		r.Mount("/debug", middleware.Profiler())
-	}
-	RegisterGeneratedRoutes(r)
-	r.Get("/health", healthHandler)
+    
+    // --- 4. Register Reconcilers ---
+    log.Println("Registering reconcilers...")
+    snapshotReconciler := &reconcilers.DiscoverySnapshotReconciler{
+        BaseReconciler: reconcile.BaseReconciler{
+            EventBus: eventBus,
+            Logger:   reconcile.NewDefaultLogger(), // Simple logger
+        },
+        Storage: storageBackend, // Give it access to the *same* storage
+    }
+    controller.RegisterReconciler(snapshotReconciler)
+    log.Printf("Registered reconciler for %s", snapshotReconciler.GetResourceKind())
 
-	// --- 7. Create and Start HTTP Server ---
-	addr := fmt.Sprintf("%s:%d", config.Host, config.Port)
-	server := &http.Server{
-		Addr:         addr,
-		Handler:      r,
-		ReadTimeout:  time.Duration(config.ReadTimeout) * time.Second,
-		WriteTimeout: time.Duration(config.WriteTimeout) * time.Second,
-		IdleTimeout:  time.Duration(config.IdleTimeout) * time.Second,
-	}
 
-	go func() {
-		log.Printf("Server starting on %s", addr)
-		log.Printf("Storage: file backend in %s", config.DataDir)
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server failed: %v", err)
-		}
-	}()
+    // --- 5. Start Controller ---
+    controllerCtx, controllerCancel := context.WithCancel(context.Background())
+    
+    go func() {
+        log.Println("Reconciliation controller starting.")
+        if err := controller.Start(controllerCtx); err != nil {
+            log.Printf("Reconciliation controller error: %v", err)
+        }
+    }()
 
-	// --- 8. Wait for Interrupt (Graceful Shutdown) ---
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	log.Println("Server shutting down...")
 
-	// --- 9. Shut Down Controller ---
-	log.Println("Signaling reconciliation controller to stop...")
-	controllerCancel() // Signal context to be done
-	controller.Stop()    // Wait for work queue to empty
-	log.Println("Reconciliation controller stopped.")
+    // --- 6. Setup Router ---
+    r := chi.NewRouter()
+    r.Use(middleware.Logger)
+    r.Use(middleware.Recoverer)
+    r.Use(middleware.RequestID)
+    r.Use(middleware.RealIP)
+    if config.Debug {
+        r.Mount("/debug", middleware.Profiler())
+    }
+    // This function registers the handlers that use the generated storage
+    RegisterGeneratedRoutes(r) 
+    r.Get("/health", healthHandler)
 
-	// --- 10. Shut Down HTTP Server ---
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+    
+    // --- 7. Create and Start HTTP Server ---
+    addr := fmt.Sprintf("%s:%d", config.Host, config.Port)
+    server := &http.Server{
+        Addr:         addr,
+        Handler:      r,
+        ReadTimeout:  time.Duration(config.ReadTimeout) * time.Second,
+        WriteTimeout: time.Duration(config.WriteTimeout) * time.Second,
+        IdleTimeout:  time.Duration(config.IdleTimeout) * time.Second,
+    }
 
-	if err := server.Shutdown(ctx); err != nil {
-		return fmt.Errorf("server forced to shutdown: %w", err)
-	}
+    go func() {
+        log.Printf("Server starting on %s", addr)
+        log.Printf("Storage: file backend in %s", config.DataDir)
+        if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+            log.Fatalf("Server failed: %v", err)
+        }
+    }()
 
-	log.Println("Server exited")
-	return nil
+    
+    // --- 8. Wait for Interrupt (Graceful Shutdown) ---
+    quit := make(chan os.Signal, 1)
+    signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+    <-quit
+    log.Println("Server shutting down...")
+
+    // --- 9. Shut Down Controller ---
+    log.Println("Signaling reconciliation controller to stop...")
+    controllerCancel() // Signal context to be done
+    controller.Stop()    // Wait for work queue to empty
+    log.Println("Reconciliation controller stopped.")
+
+
+    // --- 10. Shut Down HTTP Server ---
+    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+    defer cancel()
+
+    if err := server.Shutdown(ctx); err != nil {
+        return fmt.Errorf("server forced to shutdown: %w", err)
+    }
+
+    log.Println("Server exited")
+    return nil
 }
 
 // Health check handler
 func healthHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status":"healthy","service":"inventory-api"}`))
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    w.Write([]byte(`{"status":"healthy","service":"inventory-api"}`))
 }
 
 var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Print the version number",
-	Long:  `Print the version number of inventory-api`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("inventory-api v1.0.0")
-	},
+    Use:   "version",
+    Short: "Print the version number",
+    Long:  `Print the version number of inventory-api`,
+    Run: func(cmd *cobra.Command, args []string) {
+        fmt.Println("inventory-api v1.0.0")
+    },
 }
