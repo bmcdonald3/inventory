@@ -3,8 +3,9 @@ package reconcilers
 
 import (
 	"context"
-	"encoding/json" // <<< FIX: Added json import
+	"encoding/json"
 	"fmt"
+	"time" // <<< FIX: Import the time package
 
 	"github.com/openchami/fabrica/pkg/reconcile"
 	"github.com/openchami/fabrica/pkg/storage"
@@ -42,17 +43,36 @@ func (r *DiscoverySnapshotReconciler) Reconcile(ctx context.Context, resource in
 		return reconcile.Result{}, nil
 	}
 
-	// --- START PROCESSING ---
+	// <<< FIX: Handle the initial "create" event race condition >>>
+	// If the phase is empty, it means the HTTP handler just created it.
+	// Set it to "Pending" and requeue to let the HTTP handler finish.
+	if snapshot.Status.Phase == "" {
+		r.Logger.Infof("New snapshot %s detected, setting to Pending and requeueing.", snapshot.GetUID())
+		snapshot.Status.Phase = "Pending"
+		snapshot.Status.Message = "Snapshot queued for processing."
+		snapshotData, err := json.Marshal(snapshot)
+		if err != nil {
+			r.Logger.Errorf("Failed to marshal snapshot %s for Pending update: %v", snapshot.GetUID(), err)
+			return reconcile.Result{}, err
+		}
+		if err := r.Storage.Save(ctx, r.GetResourceKind(), snapshot.GetUID(), snapshotData); err != nil {
+			r.Logger.Errorf("Failed to update status to Pending for %s: %v", snapshot.GetUID(), err)
+			return reconcile.Result{}, err // Return error, will retry
+		}
+		// Requeue with a small delay
+		return reconcile.Result{Requeue: true, RequeueAfter: 1 * time.Second}, nil
+	}
+	// <<< END FIX >>>
+
+	// --- START PROCESSING (Phase will be "Pending" here) ---
 	snapshot.Status.Phase = "Processing"
 	snapshot.Status.Message = "Reconciliation started."
 
-	// <<< FIX: Marshal the snapshot to JSON before saving
 	snapshotData, err := json.Marshal(snapshot)
 	if err != nil {
 		r.Logger.Errorf("Failed to marshal snapshot %s for saving: %v", snapshot.GetUID(), err)
 		return reconcile.Result{}, err // Return error, will retry
 	}
-	// <<< FIX: Call r.GetResourceKind() not snapshot.GetKind()
 	if err := r.Storage.Save(ctx, r.GetResourceKind(), snapshot.GetUID(), snapshotData); err != nil {
 		r.Logger.Errorf("Failed to update status to Processing for %s: %v", snapshot.GetUID(), err)
 		return reconcile.Result{}, err // Return error for retry
@@ -60,7 +80,6 @@ func (r *DiscoverySnapshotReconciler) Reconcile(ctx context.Context, resource in
 
 	//
 	// --- TODO: OUR CORE LOGIC GOES HERE ---
-	// This is where you will add the logic from your Redfish collector
 	//
 	// 1. Unmarshal `snapshot.Spec.RawData`
 	// 2. Loop through devices in the raw data
@@ -77,13 +96,11 @@ func (r *DiscoverySnapshotReconciler) Reconcile(ctx context.Context, resource in
 	snapshot.Status.Phase = "Complete"
 	snapshot.Status.Message = "Snapshot processed successfully."
 
-	// <<< FIX: Marshal the snapshot again to save the final state
 	finalSnapshotData, err := json.Marshal(snapshot)
 	if err != nil {
 		r.Logger.Errorf("Failed to marshal final snapshot %s for saving: %v", snapshot.GetUID(), err)
 		return reconcile.Result{}, err
 	}
-	// <<< FIX: Call r.GetResourceKind() not snapshot.GetKind()
 	if err := r.Storage.Save(ctx, r.GetResourceKind(), snapshot.GetUID(), finalSnapshotData); err != nil {
 		r.Logger.Errorf("Failed to update status to Complete for %s: %v", snapshot.GetUID(), err)
 		return reconcile.Result{}, err
