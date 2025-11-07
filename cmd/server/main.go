@@ -241,9 +241,9 @@ func runServer(cmd *cobra.Command, args []string) error {
 	}
 
 	// <<< FIX: Add the generated event middleware
-	if internal_events.EventsEnabled {
-		r.Use(internal_events.EventMiddleware)
-	}
+	//if internal_events.EventsEnabled {
+	//	r.Use(internal_events.EventMiddleware)
+	//}
 	// <<< END FIX
 
 	// This function registers the handlers that use the generated storage
