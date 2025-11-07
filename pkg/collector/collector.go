@@ -11,6 +11,8 @@ import (
 	"reflect"
 	"net/url"
 	"strings"
+
+	"github.com/bmcdonald3/inventory/pkg/resources/device"
 )
 
 // Placeholder for the actual API server address
