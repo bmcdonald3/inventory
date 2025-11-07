@@ -6,6 +6,7 @@ package discoverysnapshot
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/openchami/fabrica/pkg/resource"
 )
 
@@ -31,7 +32,7 @@ type DiscoverySnapshotSpec struct {
 
 // DiscoverySnapshotStatus defines the observed state of DiscoverySnapshot
 type DiscoverySnapshotStatus struct {
-// Phase indicates the current state of reconciliation.
+	// Phase indicates the current state of reconciliation.
 	// Examples: "Pending", "Processing", "Complete", "Error"
 	Phase string `json:"phase,omitempty"`
 
@@ -50,7 +51,8 @@ type DiscoverySnapshotStatus struct {
 	// Conditions store the history of transient conditions across phases
 	Conditions []resource.Condition `json:"conditions,omitempty"`
 }
-}
+
+// <--- 2. FIXED: Removed the extra '}' that was here
 
 // Validate implements custom validation logic for DiscoverySnapshot
 func (r *DiscoverySnapshot) Validate(ctx context.Context) error {
@@ -62,6 +64,7 @@ func (r *DiscoverySnapshot) Validate(ctx context.Context) error {
 
 	return nil
 }
+
 // GetKind returns the kind of the resource
 func (r *DiscoverySnapshot) GetKind() string {
 	return "DiscoverySnapshot"
@@ -73,7 +76,7 @@ func (r *DiscoverySnapshot) GetName() string {
 }
 
 // GetUID returns the UID of the resource
-func (r *DiscoverySnapshot) GetUID() string {
+func (r* DiscoverySnapshot) GetUID() string {
 	return r.Metadata.UID
 }
 
